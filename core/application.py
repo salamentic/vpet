@@ -3,6 +3,7 @@ Main application module for DigiPet application.
 Coordinates all components and provides the main entry point.
 """
 import os
+import tkinter as tk
 import json
 import logging
 import random
@@ -174,6 +175,7 @@ class DigiPetApplication:
         self.config = new_config
         
         # Dispatch config changed event
+
         self.event_dispatcher.dispatch_event(
             Event(EventType.CONFIG_CHANGED, self, {
                 'config': new_config,
@@ -200,6 +202,7 @@ class DigiPetApplication:
             self.config['window']['transparent_color'],
             self.config['window']['title']
         )
+        self.renderer.width
         
         # Initialize the renderer window
         self.renderer.initialize()

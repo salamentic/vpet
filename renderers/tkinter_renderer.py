@@ -168,7 +168,7 @@ class TkinterRenderer(BaseRenderer):
             self.master.title(self.title)
         
         # Configure the window
-        self.master.geometry(f"{self.width}x{self.height}")
+        self.master.geometry(f"{self.master.winfo_screenwidth()}x{self.master.winfo_screenheight()}")
         self.master.overrideredirect(True)  # No window borders
         self.master.attributes('-topmost', True)  # Always on top
         
