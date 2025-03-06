@@ -1,0 +1,3 @@
+# DigiPet Requirements
+Pillow>=9.0.0  # Image processing for sprites
+requests>=2.28.0  # HTTP requests for LLM API

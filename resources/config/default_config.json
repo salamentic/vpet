@@ -1,0 +1,45 @@
+{
+    "window": {
+        "width": 150,
+        "height": 150,
+        "title": "DigiPet",
+        "bg_color": "lightblue",
+        "transparent_color": "lightblue"
+    },
+    "animation": {
+        "speed": 150,
+        "behavior_interval": 3000
+    },
+    "sprites": {
+        "folder": "resources/spritesheets",
+        "default": "pet_sprites.png",
+        "width": 32,
+        "height": 32
+    },
+    "digimon": {
+        "default_type": "Rookie",
+        "default_name": "Agumon",
+        "behavior": {
+            "walk_probability": 40,
+            "talk_probability": 10,
+            "sleep_probability": 5
+        },
+        "messages": [
+            "Hello there!",
+            "Need any help?",
+            "I'm your desktop buddy!",
+            "Don't forget to take breaks!",
+            "What are you working on?",
+            "Remember to stay hydrated!",
+            "You're doing great!",
+            "*yawns*"
+        ]
+    },
+    "plugins": {
+        "enabled": ["llm_integration"],
+        "llm_integration": {
+            "api_key": null,
+            "model": "gpt-3.5-turbo"
+        }
+    }
+}
