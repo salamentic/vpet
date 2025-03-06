@@ -5,6 +5,7 @@ import random
 import time
 import os
 import importlib.util
+import traceback
 import sys
 import threading
 
@@ -18,20 +19,16 @@ class PetConfig:
     SPRITESHEET_PATH = "pet_sprites.png"  # Path to your spritesheet
     
     # Sprite frame size (in pixels)
-    SPRITE_WIDTH = 31
-    SPRITE_HEIGHT = 31
+    SPRITE_WIDTH = 32
+    SPRITE_HEIGHT = 32
     
     # Frame mapping - tells which frames to use for each animation state
     # Format: animation_state: [(row, col), (row, col), ...]
     SPRITE_MAPPING = {
-        "idle_right": [(0, 0), (0, 1), (0, 2), (0, 3)],
-        "idle_left": [(0, 0), (0, 1), (0, 2), (0, 3)],
-        "walk_right": [(0, 4), (0, 5), (0, 6), (0, 7)],
-        "walk_left": [(0, 4), (0, 5), (0, 6), (0, 7)],
-        "talk_right": [(0, 0), (0, 1), (0, 2), (0, 3)],
-        "talk_left": [(0, 0), (0, 1), (0, 2), (0, 3)],
-        "sleep_right": [(0, 4), (0, 5), (0, 6), (0, 7)],
-        "sleep_left": [(0, 4), (0, 5), (0, 6), (0, 7)]
+        "idle": [(0, 0), (0, 1), (0, 2), (0, 3)],
+        "walk": [(0, 4), (0, 5), (0, 6), (0, 7)],
+        "talk": [(0, 0), (0, 1), (0, 2), (0, 3)],
+        "sleep": [(0, 4), (0, 5), (0, 6), (0, 7)],
     }
     
     # Colors for different states (used if no spritesheet)
@@ -39,7 +36,7 @@ class PetConfig:
     
     # Background color
     BG_COLOR = "lightblue"
-    TRANSPARENT_COLOR = None  # Set this to make a specific color transparent
+    TRANSPARENT_COLOR = "lightblue"  # Set this to make a specific color transparent
     
     # Animation frames for each state
     ANIMATION_FRAMES = {
@@ -115,7 +112,8 @@ class DesktopPet:
         self.drag_x = 0
         self.drag_y = 0
         self.animation_state = "idle"
-        self.direction = "right"
+        self.x_direction = "right"
+        self.y_direction = "up"
         self.frame = 0
         
         # Spritesheet handling
@@ -204,12 +202,16 @@ class DesktopPet:
             
             # Extract and store each frame based on the mapping
             for state, frames in self.config.SPRITE_MAPPING.items():
-                self.sprite_frames[state] = []
+                if "left" not in state or "right" not in state:
+                    self.sprite_frames[f"{state}_left"] = []
+                    self.sprite_frames[f"{state}_right"] = []
+                else:
+                    self.sprite_frames[state] = []
                 for row, col in frames:
                     try:
                         # Calculate position in spritesheet
-                        x = col * (sprite_width+2)
-                        y = 0
+                        x = col * (sprite_width)
+                        y = row * (sprite_height)
                         
                         # Check if coordinates are within the spritesheet bounds
                         print(x,y)
@@ -223,19 +225,23 @@ class DesktopPet:
                                 frame = frame.resize((self.width, self.height), Image.LANCZOS)
                             
                             # Convert to PhotoImage for tkinter
-                            photo = ImageTk.PhotoImage(frame)
-                            self.sprite_frames[state].append(photo)
+                            photo_left = ImageTk.PhotoImage(frame)
+                            photo_right = ImageTk.PhotoImage(frame.transpose(Image.FLIP_LEFT_RIGHT))
+                            self.sprite_frames[f"{state}_right"].append(photo_right)
+                            self.sprite_frames[f"{state}_left"].append(photo_left)
                         else:
                             print(f"Warning: Frame at row {row}, col {col} is outside spritesheet bounds")
                     except Exception as frame_error:
                         print(f"Error loading frame at row {row}, col {col}: {frame_error}")
+                        traceback.print_exc()
                 
-                print(f"Loaded {len(self.sprite_frames[state])} frames for state '{state}'")
+                print(f"Loaded {len(self.sprite_frames[f'{state}_left'])+len(self.sprite_frames[f'{state}_left'])} frames for state '{state}'")
             
             print(f"Successfully loaded {len(self.sprite_frames)} animation states from spritesheet")
             
         except Exception as e:
             print(f"Error loading sprites: {e}")
+            traceback.print_exc()
             # Fall back to drawing shapes
             self.sprite_frames = {}
     
@@ -255,6 +261,7 @@ class DesktopPet:
                     print("Warning: PetConfig class not found in config file, using defaults")
                     return PetConfig
             except Exception as e:
+                traceback.print_exc()
                 print(f"Error loading config: {e}")
                 return PetConfig
         else:
@@ -353,6 +360,7 @@ class PetConfig:
                 time.sleep(1)  # Check every second
             except Exception as e:
                 print(f"Error watching config file: {e}")
+                traceback.print_exc()
                 time.sleep(5)  # Wait longer if there's an error
     
     def reload_config(self):
@@ -370,6 +378,7 @@ class PetConfig:
                 
             self.canvas.config(bg=self.bg_color)
         except Exception as e:
+            traceback.print_exc()
             print(f"Error setting transparency: {e}")
         
         # Reload sprites if spritesheet settings changed
@@ -444,7 +453,7 @@ class PetConfig:
         
         # If using sprites, get frame count from sprite mapping
         if hasattr(self.config, 'USE_SPRITESHEET') and self.config.USE_SPRITESHEET and self.sprite_frames:
-            state_key = f"{self.animation_state}_{self.direction}"
+            state_key = f"{self.animation_state}_{self.x_direction}"
             if state_key in self.sprite_frames:
                 frames_count = len(self.sprite_frames[state_key])
         
@@ -464,7 +473,7 @@ class PetConfig:
         
         # Try to use spritesheet first
         if self.config.USE_SPRITESHEET and self.sprite_frames:
-            state_key = f"{self.animation_state}_{self.direction}"
+            state_key = f"{self.animation_state}_{self.x_direction}"
             
             if state_key in self.sprite_frames and self.sprite_frames[state_key]:
                 # Get the current frame from the sprite mapping
@@ -501,168 +510,7 @@ class PetConfig:
         body_y = self.height // 6
         body_width = self.width * 2 // 3
         body_height = self.height * 2 // 3
-        
-        # Body (circle/oval)
-        self.canvas.create_oval(
-            body_x, body_y, 
-            body_x + body_width, body_y + body_height, 
-            fill=color, outline=outline_color, width=2, tags="sprite"
-        )
-        
-        # Eyes and mouth - different based on direction
-        if self.direction == "right":
-            # Right facing eyes
-            eye_offset_x = body_width // 4
-            self.canvas.create_oval(
-                body_x + body_width - eye_offset_x, body_y + body_height // 4, 
-                body_x + body_width - eye_offset_x + body_width // 10, body_y + body_height // 4 + body_height // 10, 
-                fill="white", outline=outline_color, tags="sprite"
-            )
-            self.canvas.create_oval(
-                body_x + body_width - eye_offset_x * 2, body_y + body_height // 4, 
-                body_x + body_width - eye_offset_x * 2 + body_width // 10, body_y + body_height // 4 + body_height // 10, 
-                fill="white", outline=outline_color, tags="sprite"
-            )
-            
-            # Pupils
-            pupil_offset = body_width // 40
-            self.canvas.create_oval(
-                body_x + body_width - eye_offset_x + pupil_offset, body_y + body_height // 4 + pupil_offset, 
-                body_x + body_width - eye_offset_x + body_width // 10 - pupil_offset, body_y + body_height // 4 + body_height // 10 - pupil_offset, 
-                fill=outline_color, tags="sprite"
-            )
-            self.canvas.create_oval(
-                body_x + body_width - eye_offset_x * 2 + pupil_offset, body_y + body_height // 4 + pupil_offset, 
-                body_x + body_width - eye_offset_x * 2 + body_width // 10 - pupil_offset, body_y + body_height // 4 + body_height // 10 - pupil_offset, 
-                fill=outline_color, tags="sprite"
-            )
-            
-            # Animate mouth based on state and frame
-            mouth_y = body_y + body_height * 2 // 3
-            if self.animation_state == "talk":
-                mouth_open = self.frame % 2 == 0
-                if mouth_open:
-                    self.canvas.create_oval(
-                        body_x + body_width - eye_offset_x * 1.5, mouth_y, 
-                        body_x + body_width - eye_offset_x / 2, mouth_y + body_height // 6, 
-                        fill=outline_color, tags="sprite"
-                    )
-                else:
-                    self.canvas.create_line(
-                        body_x + body_width - eye_offset_x * 1.5, mouth_y + body_height // 12, 
-                        body_x + body_width - eye_offset_x / 2, mouth_y + body_height // 12, 
-                        fill=outline_color, width=2, tags="sprite"
-                    )
-            elif self.animation_state == "sleep":
-                # ZZZ for sleeping
-                self.canvas.create_text(
-                    body_x + body_width + 10, body_y, 
-                    text="Z", fill=outline_color, font=("Arial", 12, "bold"), tags="sprite"
-                )
-                self.canvas.create_text(
-                    body_x + body_width, body_y + 10, 
-                    text="Z", fill=outline_color, font=("Arial", 10, "bold"), tags="sprite"
-                )
-                self.canvas.create_text(
-                    body_x + body_width - 10, body_y + 20, 
-                    text="Z", fill=outline_color, font=("Arial", 8, "bold"), tags="sprite"
-                )
-                # Closed eyes
-                self.canvas.create_line(
-                    body_x + body_width - eye_offset_x, body_y + body_height // 4 + body_height // 20, 
-                    body_x + body_width - eye_offset_x + body_width // 10, body_y + body_height // 4 + body_height // 20, 
-                    fill=outline_color, width=2, tags="sprite"
-                )
-                self.canvas.create_line(
-                    body_x + body_width - eye_offset_x * 2, body_y + body_height // 4 + body_height // 20, 
-                    body_x + body_width - eye_offset_x * 2 + body_width // 10, body_y + body_height // 4 + body_height // 20, 
-                    fill=outline_color, width=2, tags="sprite"
-                )
-            else:
-                # Normal mouth for other states
-                mouth_y = body_y + body_height * 2 // 3 + (self.frame % 2) * (body_height // 30)
-                self.canvas.create_line(
-                    body_x + body_width - eye_offset_x * 1.5, mouth_y, 
-                    body_x + body_width - eye_offset_x / 2, mouth_y, 
-                    fill=outline_color, width=2, tags="sprite"
-                )
-        else:
-            # Left facing eyes and features
-            eye_offset_x = body_width // 4
-            self.canvas.create_oval(
-                body_x + eye_offset_x - body_width // 10, body_y + body_height // 4, 
-                body_x + eye_offset_x, body_y + body_height // 4 + body_height // 10, 
-                fill="white", outline=outline_color, tags="sprite"
-            )
-            self.canvas.create_oval(
-                body_x + eye_offset_x * 2 - body_width // 10, body_y + body_height // 4, 
-                body_x + eye_offset_x * 2, body_y + body_height // 4 + body_height // 10, 
-                fill="white", outline=outline_color, tags="sprite"
-            )
-            
-            # Pupils
-            pupil_offset = body_width // 40
-            self.canvas.create_oval(
-                body_x + eye_offset_x - body_width // 10 + pupil_offset, body_y + body_height // 4 + pupil_offset, 
-                body_x + eye_offset_x - pupil_offset, body_y + body_height // 4 + body_height // 10 - pupil_offset, 
-                fill=outline_color, tags="sprite"
-            )
-            self.canvas.create_oval(
-                body_x + eye_offset_x * 2 - body_width // 10 + pupil_offset, body_y + body_height // 4 + pupil_offset, 
-                body_x + eye_offset_x * 2 - pupil_offset, body_y + body_height // 4 + body_height // 10 - pupil_offset, 
-                fill=outline_color, tags="sprite"
-            )
-            
-            # Similar animation logic as the right side (code omitted for brevity)
-            mouth_y = body_y + body_height * 2 // 3
-            if self.animation_state == "talk":
-                mouth_open = self.frame % 2 == 0
-                if mouth_open:
-                    self.canvas.create_oval(
-                        body_x + eye_offset_x / 2, mouth_y, 
-                        body_x + eye_offset_x * 1.5, mouth_y + body_height // 6, 
-                        fill=outline_color, tags="sprite"
-                    )
-                else:
-                    self.canvas.create_line(
-                        body_x + eye_offset_x / 2, mouth_y + body_height // 12, 
-                        body_x + eye_offset_x * 1.5, mouth_y + body_height // 12, 
-                        fill=outline_color, width=2, tags="sprite"
-                    )
-            elif self.animation_state == "sleep":
-                # ZZZ for sleeping
-                self.canvas.create_text(
-                    body_x - 10, body_y, 
-                    text="Z", fill=outline_color, font=("Arial", 12, "bold"), tags="sprite"
-                )
-                self.canvas.create_text(
-                    body_x, body_y + 10, 
-                    text="Z", fill=outline_color, font=("Arial", 10, "bold"), tags="sprite"
-                )
-                self.canvas.create_text(
-                    body_x + 10, body_y + 20, 
-                    text="Z", fill=outline_color, font=("Arial", 8, "bold"), tags="sprite"
-                )
-                # Closed eyes
-                self.canvas.create_line(
-                    body_x + eye_offset_x - body_width // 10, body_y + body_height // 4 + body_height // 20, 
-                    body_x + eye_offset_x, body_y + body_height // 4 + body_height // 20, 
-                    fill=outline_color, width=2, tags="sprite"
-                )
-                self.canvas.create_line(
-                    body_x + eye_offset_x * 2 - body_width // 10, body_y + body_height // 4 + body_height // 20, 
-                    body_x + eye_offset_x * 2, body_y + body_height // 4 + body_height // 20, 
-                    fill=outline_color, width=2, tags="sprite"
-                )
-            else:
-                # Normal mouth for other states
-                mouth_y = body_y + body_height * 2 // 3 + (self.frame % 2) * (body_height // 30)
-                self.canvas.create_line(
-                    body_x + eye_offset_x / 2, mouth_y, 
-                    body_x + eye_offset_x * 1.5, mouth_y, 
-                    fill=outline_color, width=2, tags="sprite"
-                )
-                
+
         # For walking animation, add some bounce
         if self.animation_state == "walk":
             bounce = 2 if self.frame % 2 == 0 else 0
@@ -721,10 +569,10 @@ class PetConfig:
         
         # Decide direction
         if random.choice([True, False]):
-            self.direction = "right"
+            self.x_direction = "right"
             distance = random.randint(50, 150)
         else:
-            self.direction = "left"
+            self.x_direction = "left"
             distance = -random.randint(50, 150)
         
         # Calculate target position with screen boundaries
@@ -735,10 +583,10 @@ class PetConfig:
         # Check screen boundaries
         if target_x < 0:
             target_x = 0
-            self.direction = "right"
+            self.x_direction = "right"
         elif target_x > self.master.winfo_screenwidth() - self.width:
             target_x = self.master.winfo_screenwidth() - self.width
-            self.direction = "left"
+            self.x_direction = "left"
         
         # Set up walking animation
         steps = 20
@@ -860,9 +708,12 @@ class PetConfig:
 if __name__ == "__main__":
     root = tk.Tk()
     root.title("Desktop Pet")
+    root.attributes('-alpha', 1.0)
+    root.wm_attributes("-topmost", True)
+    root.wm_attributes("-disabled", True)
+    root.wm_attributes("-transparentcolor", "white")
     
     # Create pet
     pet = DesktopPet(root)
     
-    # Start the main loop
     root.mainloop()
