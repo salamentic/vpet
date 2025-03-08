@@ -134,33 +134,57 @@ class Digimon(BaseEntity):
             
             # Similar to digi.py's walk_randomly method
             window_width, window_height = self.size
-            sprite_width = 32  # Sprite width
             
+            # Use actual entity width from sprite frame
+            try:
+                sprite_width = 32
+                current_frame = self.get_current_frame()
+                if hasattr(current_frame, 'width'):
+                    sprite_width = current_frame.width()
+            except:
+                # Fallback to default if we can't get actual width
+                sprite_width = 32
+                
             # Get current position
             current_x, current_y = self.position
             
             # Calculate max position that keeps sprite on screen
             max_x = window_width - sprite_width
             
-            # Random distance between 30-80% of the screen width
-            distance = random.randint(int(max_x * 0.3), int(max_x * 0.8))
-            
-            # Apply direction
-            if direction == "left":
-                distance = -distance
+            # For smoother movement, pick a random percentage of screen to move across
+            # Aim for moving 30-80% of the available space in current direction
+            available_space = 0
+            if direction == "right":
+                available_space = max_x - current_x
+                # Go at least 30% of available distance, at most 80%
+                target_distance = random.uniform(0.3, 0.8) * available_space
+                target_x = current_x + int(target_distance)
+            else:  # Left
+                available_space = current_x
+                # Go at least 30% of available distance, at most 80%
+                target_distance = random.uniform(0.3, 0.8) * available_space
+                target_x = current_x - int(target_distance)
                 
-            # Calculate target position
-            target_x = current_x + distance
+            # Ensure we stay in bounds
+            target_x = max(0, min(target_x, max_x))
             
-            # Check screen boundaries
-            if target_x < 0:
-                target_x = 0
-                self.set_direction("right")
-            elif target_x > max_x:
-                target_x = max_x
-                self.set_direction("left")
+            # If movement is impossible in this direction, switch direction
+            if (direction == "right" and target_x <= current_x) or (direction == "left" and target_x >= current_x):
+                direction = "right" if direction == "left" else "left"
+                self.set_direction(direction)
                 
-            logger.debug(f"Walking from {current_x} to {target_x} (distance: {distance})")
+                # Recalculate with new direction
+                if direction == "right":
+                    available_space = max_x - current_x
+                    target_x = current_x + int(random.uniform(0.3, 0.8) * available_space)
+                else:
+                    available_space = current_x
+                    target_x = current_x - int(random.uniform(0.3, 0.8) * available_space)
+                
+                # Final boundary check
+                target_x = max(0, min(target_x, max_x))
+                
+            logger.debug(f"Walking from {current_x} to {target_x}")
             self._walk_to_position(target_x, current_y)
             
         elif choice <= self.walk_probability + self.talk_probability:
@@ -186,7 +210,7 @@ class Digimon(BaseEntity):
                 })
             )
     
-    def _walk_to_position(self, target_x: int, target_y: int, steps: int = 20, step_time: int = 50):
+    def _walk_to_position(self, target_x: int, target_y: int, steps: int = 25, step_time: int = 20):
         """
         Create a walking animation to move to a target position.
         Implemented similarly to digi.py using renderer's after method.
@@ -194,8 +218,8 @@ class Digimon(BaseEntity):
         Args:
             target_x (int): Target X coordinate
             target_y (int): Target Y coordinate
-            steps (int): Number of steps to take
-            step_time (int): Time between steps in milliseconds
+            steps (int): Number of steps to take (default: 25 for smoother animation)
+            step_time (int): Time between steps in milliseconds (default: 20ms for smoother animation)
         """
         # Calculate step size
         start_x, start_y = self.position

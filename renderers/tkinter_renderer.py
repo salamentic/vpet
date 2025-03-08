@@ -414,9 +414,10 @@ class TkinterRenderer(BaseRenderer):
             # Start the step-by-step movement animation similar to digi.py
             self._move_entity_steps(entity, start_pos, target_pos, steps, step_time)
     
-    def _move_entity_steps(self, entity, start_pos, target_pos, steps, step_time, step_count=0):
+    def _move_entity_steps(self, entity, start_pos, target_pos, steps=25, step_time=20, step_count=0):
         """
         Animate entity movement in steps, similar to the digi.py implementation.
+        Default values changed to: 25 steps at 20ms intervals for smoother animation.
         
         Args:
             entity: Entity to move
@@ -441,24 +442,26 @@ class TkinterRenderer(BaseRenderer):
             # Update entity position
             entity.set_position(int(new_x), int(new_y))
             
-            # Increment animation frame for walking (every 2 steps)
-            if step_count % 2 == 0:
+            # Increment animation frame for walking (every 4 steps for smoother animation)
+            if step_count % 4 == 0:
                 entity.animation_frame = (entity.animation_frame + 1) % 4
             
             # Update the rendering
             self.render()
             
-            # Add small bounce effect (optional)
-            if step_count % 2 == 0:
-                bounce = 1  # Pixels to bounce
-                self.master.geometry(f"+{self.master.winfo_x()}+{self.master.winfo_y() - bounce}")
-            else:
-                self.master.geometry(f"+{self.master.winfo_x()}+{self.master.winfo_y() + 1}")
+            # Add small bounce effect (only during active walking, not at beginning/end)
+            if 5 < step_count < (steps - 5):
+                if step_count % 4 == 0:
+                    bounce = 1
+                    self.master.geometry(f"+{self.master.winfo_x()}+{self.master.winfo_y() - bounce}")
+                elif step_count % 4 == 2:
+                    self.master.geometry(f"+{self.master.winfo_x()}+{self.master.winfo_y() + 1}")
             
-            # Schedule next step
-            self.master.after(step_time, lambda: self._move_entity_steps(
-                entity, start_pos, target_pos, steps, step_time, step_count + 1
-            ))
+            # Schedule next step with direct reference to avoid lambda overhead
+            next_step = step_count + 1
+            self.master.after(step_time, 
+                lambda e=entity, s_pos=start_pos, t_pos=target_pos, s=steps, st=step_time, sc=next_step: 
+                self._move_entity_steps(e, s_pos, t_pos, s, st, sc))
         else:
             # When walking is done, reset to idle state
             if entity.current_state == "walk":

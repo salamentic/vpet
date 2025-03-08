@@ -248,11 +248,17 @@ class DigiPetApplication:
                     logger.error(f"Sprite file not found: {sprite_path}")
                     sprite_path = None
         
-        # Create sprite manager
+        # Create sprite manager with reasonable display size
+        # Make sprite size about 1/4 of the window height, preserving aspect ratio
+        sprite_size = (sprite_config['width'], sprite_config['height'])
+        display_height = min(self.config['window']['height'] // 3, 32)  # Target display height
+        scale_factor = display_height / sprite_size[1]
+        display_size = (int(sprite_size[0] * scale_factor), display_height)
+        
         sprite_manager = SpriteManager(
             sprite_path,
-            (sprite_config['width'], sprite_config['height']),
-            (self.config['window']['width'], self.config['window']['height']),
+            sprite_size,
+            display_size,  # Use smaller display size
             self.config['window']['transparent_color'],
             self._create_sprite_mapping()
         )
@@ -267,13 +273,17 @@ class DigiPetApplication:
             'sleep_probability': digimon_config['behavior']['sleep_probability']
         }
         
+        # Calculate initial position (centered horizontally, lower part of screen vertically)
+        initial_x = (self.config['window']['width'] - display_size[0]) // 2
+        initial_y = self.config['window']['height'] - display_size[1] - 20  # 20px from bottom
+        
         # Create Digimon entity
         digimon = Digimon(
             digimon_config['default_name'],
             digimon_type,
             self.event_dispatcher,
             sprite_manager,
-            (50, 50),  # Initial position
+            (initial_x, initial_y),  # Better initial position
             (self.config['window']['width'], self.config['window']['height']),
             digimon_props
         )
