@@ -93,14 +93,23 @@ class SpeechBubble:
     
     def clear(self):
         """Remove the speech bubble from the canvas."""
-        if self.timer:
-            self.canvas.after_cancel(self.timer)
-            self.timer = None
-        
-        self.canvas.delete(f"speech_{id(self.entity)}")
-        
-        self.bubble_id = None
-        self.text_id = None
+        try:
+            if self.timer:
+                self.canvas.after_cancel(self.timer)
+                self.timer = None
+            
+            self.canvas.delete(f"speech_{id(self.entity)}")
+            
+            self.bubble_id = None
+            self.text_id = None
+            logger.debug(f"Speech bubble cleared for {self.entity.name}")
+        except Exception as e:
+            logger.error(f"Error clearing speech bubble: {e}")
+            # Make sure we don't leave stray tags on the canvas
+            try:
+                self.canvas.delete(f"speech_{id(self.entity)}")
+            except:
+                pass
     
     def set_auto_clear(self, master):
         """
@@ -274,14 +283,26 @@ class TkinterRenderer(BaseRenderer):
                 )
         
         # Update speech bubble positions if entities have moved
-        for entity, bubble in self.speech_bubbles.items():
-            if bubble:
-                # Delete and redraw if the entity has moved
-                bubble.clear()
-                self.speech_bubbles[entity] = SpeechBubble(
-                    self.canvas, entity, bubble.message, bubble.duration
-                )
-                self.speech_bubbles[entity].set_auto_clear(self.master)
+        entities_to_update = list(self.speech_bubbles.keys())  # Create a copy to avoid modification during iteration
+        for entity in entities_to_update:
+            if entity in self.speech_bubbles and self.speech_bubbles[entity]:
+                try:
+                    bubble = self.speech_bubbles[entity]
+                    message = bubble.message
+                    duration = bubble.duration
+                    
+                    # Delete and redraw if the entity has moved
+                    bubble.clear()
+                    
+                    # Create a new speech bubble at the updated position
+                    self.speech_bubbles[entity] = SpeechBubble(
+                        self.canvas, entity, message, duration
+                    )
+                    self.speech_bubbles[entity].set_auto_clear(self.master)
+                except Exception as e:
+                    logger.error(f"Error updating speech bubble: {e}")
+                    if entity in self.speech_bubbles:
+                        del self.speech_bubbles[entity]
         
         # Update the window
         self.master.update_idletasks()
@@ -371,7 +392,7 @@ class TkinterRenderer(BaseRenderer):
         # Clear the speech bubble for this entity
         if entity in self.speech_bubbles and self.speech_bubbles[entity]:
             self.speech_bubbles[entity].clear()
-            self.speech_bubbles[entity] = None
+            del self.speech_bubbles[entity]
     
     def handle_config_changed(self, event: Event):
         """

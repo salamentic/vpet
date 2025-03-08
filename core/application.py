@@ -96,8 +96,8 @@ class DigiPetApplication:
             "sprites": {
                 "folder": "resources/spritesheets",
                 "default": "pet_sprites.png",
-                "width": 64,
-                "height": 64
+                "width": 32,
+                "height": 32
             },
             "digimon": {
                 "default_type": "Rookie",

@@ -160,7 +160,7 @@ class Digimon(BaseEntity):
             
             # Calculate random distance to walk based on window size
             window_width, window_height = self.size
-            sprite_width = 64  # Match the sprite size in config
+            sprite_width = 32  # Match the sprite size in config
             
             # Calculate maximum walkable area with sprite size considered
             max_x = window_width - sprite_width
