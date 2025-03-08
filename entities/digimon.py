@@ -2,6 +2,7 @@
 Digimon entity implementation for DigiPet application.
 """
 import random
+import time
 from typing import Dict, Any, List, Optional, Tuple
 import logging
 from core.event_system import EventDispatcher, Event, EventType
