@@ -110,6 +110,10 @@ class Digimon(BaseEntity):
                 # Update position
                 self.set_position(int(new_x), int(new_y))
                 
+                # Increment animation frame every 2 steps for a smoother walk animation
+                if step_index % 2 == 0:
+                    self.animation_frame = (self.animation_frame + 1) % 4
+                
                 # Update step index
                 self._current_walk['step_index'] += 1
                 
@@ -156,21 +160,31 @@ class Digimon(BaseEntity):
             
             # Calculate random distance to walk based on window size
             window_width, window_height = self.size
-            max_distance = min(100, window_width // 2)  # Limit walk distance to half the window width
-            distance = random.randint(20, max_distance)
+            sprite_width = 64  # Match the sprite size in config
+            
+            # Calculate maximum walkable area with sprite size considered
+            max_x = window_width - sprite_width
+            
+            # Calculate a reasonable distance (about 20-50% of remaining space)
+            distance = random.randint(int(max_x * 0.2), int(max_x * 0.5))
             if direction == "left":
                 distance = -distance
             
-            # Dispatch move event with target position
+            # Get current position
             x, y = self.position
-            target_x = max(0, min(x + distance, window_width - 32))  # 32 is approximate sprite width
             
-            # If we hit a boundary, change direction
-            if target_x <= 0:
+            # Calculate target position with boundary checks
+            target_x = x + distance
+            
+            # Ensure we don't go out of bounds
+            if target_x < 0:
+                target_x = 0
                 self.set_direction("right")
-            elif target_x >= window_width - 32:
+            elif target_x > max_x:
+                target_x = max_x
                 self.set_direction("left")
             
+            logger.debug(f"Walking from {x} to {target_x} (distance: {distance})")
             self._walk_to_position(target_x, y)
             
         elif choice <= self.walk_probability + self.talk_probability:
@@ -196,7 +210,7 @@ class Digimon(BaseEntity):
                 })
             )
     
-    def _walk_to_position(self, target_x: int, target_y: int, steps: int = 20, step_time: float = 0.05):
+    def _walk_to_position(self, target_x: int, target_y: int, steps: int = 10, step_time: float = 0.1):
         """
         Create a walking animation to move to a target position.
         

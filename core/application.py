@@ -83,8 +83,8 @@ class DigiPetApplication:
         # Create default configuration
         default_config = {
             "window": {
-                "width": 300,  # Increased window size for better visibility
-                "height": 200, # Increased window height
+                "width": 150,  # Smaller window for pet size
+                "height": 150, # Smaller window height
                 "title": "DigiPet",
                 "bg_color": "lightblue",
                 "transparent_color": "lightblue"
@@ -96,8 +96,8 @@ class DigiPetApplication:
             "sprites": {
                 "folder": "resources/spritesheets",
                 "default": "pet_sprites.png",
-                "width": 32,
-                "height": 32
+                "width": 64,
+                "height": 64
             },
             "digimon": {
                 "default_type": "Rookie",
