@@ -50,6 +50,7 @@ class BaseRenderer(ABC):
         self.event_dispatcher.register_listener(EventType.SPEAK, self.handle_speak_event)
         self.event_dispatcher.register_listener(EventType.STOP_SPEAKING, self.handle_stop_speaking_event)
         self.event_dispatcher.register_listener(EventType.CONFIG_CHANGED, self.handle_config_changed)
+        self.event_dispatcher.register_listener(EventType.START_WALK, self.handle_walk_event)
     
     def add_entity(self, entity):
         """
@@ -113,6 +114,17 @@ class BaseRenderer(ABC):
             self.height = event.data['height']
         
         logger.debug(f"Renderer updated from config change")
+    
+    def handle_walk_event(self, event: Event):
+        """
+        Handle walk events to animate entity movement.
+        
+        Args:
+            event (Event): The walk event
+        """
+        # Base implementation does nothing
+        # Specific renderers should override this to provide movement animation
+        pass
     
     @abstractmethod
     def initialize(self):

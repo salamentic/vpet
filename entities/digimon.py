@@ -89,49 +89,23 @@ class Digimon(BaseEntity):
         # Update behavior timer
         self.behavior_timer += delta_time
         
-        # Handle walking animation steps if we're currently walking
-        if self._current_walk and self.current_state == "walk" and not self.dragging:
-            current_time = time.time()
-            if current_time - self._current_walk['last_step_time'] >= self._current_walk['step_time']:
-                # Time for the next step in the walking animation
-                self._current_walk['last_step_time'] = current_time
-                
-                # Calculate current position
-                start_x, start_y = self._current_walk['start_pos']
-                target_x, target_y = self._current_walk['target_pos']
-                steps = self._current_walk['steps']
-                step_index = self._current_walk['step_index']
-                
-                # Linear interpolation between start and target position
-                progress = min(1.0, (step_index + 1) / steps)
-                new_x = start_x + (target_x - start_x) * progress
-                new_y = start_y + (target_y - start_y) * progress
-                
-                # Update position
-                self.set_position(int(new_x), int(new_y))
-                
-                # Increment animation frame every 2 steps for a smoother walk animation
-                if step_index % 2 == 0:
-                    self.animation_frame = (self.animation_frame + 1) % 4
-                
-                # Update step index
-                self._current_walk['step_index'] += 1
-                
-                # If we've finished all steps, clear the walk data
-                if self._current_walk['step_index'] >= steps:
-                    logger.debug(f"Walk animation completed: arrived at {self.position}")
-                    self._current_walk = None
-                    # Return to idle state when walking is complete
-                    if self.current_state == "walk":
-                        self.set_state("idle")
-        
-        # Check if it's time for a random behavior
-        elif self.behavior_timer >= self.behavior_interval and not self.dragging and not self._current_walk:
+        # Check if it's time for a random behavior (only if not dragging or walking)
+        if self.behavior_timer >= self.behavior_interval and not self.dragging and self.current_state != "walk":
             self.behavior_timer = 0
             self._perform_random_behavior()
         
+        # Update animation frame (every ~150ms for smooth animation)
         # Update stats over time
         self._update_stats(delta_time)
+        
+        # Advance animation frame every few frames for smoother animation
+        if hasattr(self, '_animation_timer'):
+            self._animation_timer += delta_time
+            if self._animation_timer >= 0.15:  # 150ms between frame changes
+                self._animation_timer = 0
+                self.animation_frame = (self.animation_frame + 1) % 4
+        else:
+            self._animation_timer = 0
     
     def get_current_frame(self) -> Any:
         """
@@ -158,34 +132,36 @@ class Digimon(BaseEntity):
                 })
             )
             
-            # Calculate random distance to walk based on window size
+            # Similar to digi.py's walk_randomly method
             window_width, window_height = self.size
-            sprite_width = 32  # Match the sprite size in config
-            
-            # Calculate maximum walkable area with sprite size considered
-            max_x = window_width - sprite_width
-            
-            # Calculate a reasonable distance (about 20-50% of remaining space)
-            distance = random.randint(int(max_x * 0.2), int(max_x * 0.5))
-            if direction == "left":
-                distance = -distance
+            sprite_width = 32  # Sprite width
             
             # Get current position
-            x, y = self.position
+            current_x, current_y = self.position
             
-            # Calculate target position with boundary checks
-            target_x = x + distance
+            # Calculate max position that keeps sprite on screen
+            max_x = window_width - sprite_width
             
-            # Ensure we don't go out of bounds
+            # Random distance between 30-80% of the screen width
+            distance = random.randint(int(max_x * 0.3), int(max_x * 0.8))
+            
+            # Apply direction
+            if direction == "left":
+                distance = -distance
+                
+            # Calculate target position
+            target_x = current_x + distance
+            
+            # Check screen boundaries
             if target_x < 0:
                 target_x = 0
                 self.set_direction("right")
             elif target_x > max_x:
                 target_x = max_x
                 self.set_direction("left")
-            
-            logger.debug(f"Walking from {x} to {target_x} (distance: {distance})")
-            self._walk_to_position(target_x, y)
+                
+            logger.debug(f"Walking from {current_x} to {target_x} (distance: {distance})")
+            self._walk_to_position(target_x, current_y)
             
         elif choice <= self.walk_probability + self.talk_probability:
             # Say something random
@@ -210,35 +186,37 @@ class Digimon(BaseEntity):
                 })
             )
     
-    def _walk_to_position(self, target_x: int, target_y: int, steps: int = 10, step_time: float = 0.1):
+    def _walk_to_position(self, target_x: int, target_y: int, steps: int = 20, step_time: int = 50):
         """
         Create a walking animation to move to a target position.
+        Implemented similarly to digi.py using renderer's after method.
         
         Args:
             target_x (int): Target X coordinate
             target_y (int): Target Y coordinate
             steps (int): Number of steps to take
-            step_time (float): Time between steps in seconds
+            step_time (int): Time between steps in milliseconds
         """
         # Calculate step size
         start_x, start_y = self.position
-        dx = (target_x - start_x) / steps
         
         # Set direction based on movement
-        if dx > 0:
+        if target_x > start_x:
             self.set_direction("right")
-        elif dx < 0:
+        elif target_x < start_x:
             self.set_direction("left")
         
-        # Create walk event with animation data
+        # Tell the system we're starting to walk
         self.event_dispatcher.dispatch_event(
             Event(EventType.START_WALK, self, {
                 'target': self.name,
+                'direction': self.direction,
+                'renderer_action': 'move_entity_step_by_step',
                 'start_pos': (start_x, start_y),
                 'target_pos': (target_x, target_y),
                 'steps': steps,
                 'step_time': step_time,
-                'step_index': 0
+                'entity_id': id(self)
             })
         )
     

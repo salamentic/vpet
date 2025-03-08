@@ -394,6 +394,80 @@ class TkinterRenderer(BaseRenderer):
             self.speech_bubbles[entity].clear()
             del self.speech_bubbles[entity]
     
+    def handle_walk_event(self, event: Event):
+        """
+        Handle walk events to animate entity movement.
+        
+        Args:
+            event (Event): The walk event
+        """
+        super().handle_walk_event(event)
+        
+        # Check if this is a movement event that requires renderer action
+        if 'renderer_action' in event.data and event.data['renderer_action'] == 'move_entity_step_by_step':
+            entity = event.source
+            start_pos = event.data.get('start_pos')
+            target_pos = event.data.get('target_pos')
+            steps = event.data.get('steps', 20)
+            step_time = event.data.get('step_time', 50)  # milliseconds
+            
+            # Start the step-by-step movement animation similar to digi.py
+            self._move_entity_steps(entity, start_pos, target_pos, steps, step_time)
+    
+    def _move_entity_steps(self, entity, start_pos, target_pos, steps, step_time, step_count=0):
+        """
+        Animate entity movement in steps, similar to the digi.py implementation.
+        
+        Args:
+            entity: Entity to move
+            start_pos: Starting position (x, y)
+            target_pos: Target position (x, y)
+            steps: Total number of steps
+            step_time: Time between steps (ms)
+            step_count: Current step number
+        """
+        if step_count < steps and entity.current_state == "walk":
+            # Calculate new position using linear interpolation
+            start_x, start_y = start_pos
+            target_x, target_y = target_pos
+            
+            # Calculate progress (0.0 to 1.0)
+            progress = (step_count + 1) / steps
+            
+            # Calculate new position
+            new_x = start_x + (target_x - start_x) * progress
+            new_y = start_y + (target_y - start_y) * progress
+            
+            # Update entity position
+            entity.set_position(int(new_x), int(new_y))
+            
+            # Increment animation frame for walking (every 2 steps)
+            if step_count % 2 == 0:
+                entity.animation_frame = (entity.animation_frame + 1) % 4
+            
+            # Update the rendering
+            self.render()
+            
+            # Add small bounce effect (optional)
+            if step_count % 2 == 0:
+                bounce = 1  # Pixels to bounce
+                self.master.geometry(f"+{self.master.winfo_x()}+{self.master.winfo_y() - bounce}")
+            else:
+                self.master.geometry(f"+{self.master.winfo_x()}+{self.master.winfo_y() + 1}")
+            
+            # Schedule next step
+            self.master.after(step_time, lambda: self._move_entity_steps(
+                entity, start_pos, target_pos, steps, step_time, step_count + 1
+            ))
+        else:
+            # When walking is done, reset to idle state
+            if entity.current_state == "walk":
+                entity.set_state("idle")
+                logger.debug(f"Entity {entity.name} finished walking, now idle")
+                
+                # Ensure we're at the exact target position
+                entity.set_position(int(target_pos[0]), int(target_pos[1]))
+    
     def handle_config_changed(self, event: Event):
         """
         Handle configuration change events.
