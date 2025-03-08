@@ -83,8 +83,8 @@ class DigiPetApplication:
         # Create default configuration
         default_config = {
             "window": {
-                "width": 150,
-                "height": 150,
+                "width": 300,  # Increased window size for better visibility
+                "height": 200, # Increased window height
                 "title": "DigiPet",
                 "bg_color": "lightblue",
                 "transparent_color": "lightblue"

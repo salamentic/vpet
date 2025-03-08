@@ -5,6 +5,7 @@ Provides an abstract base class for all entities in the system.
 from abc import ABC, abstractmethod
 from typing import Dict, Any, Tuple, Optional
 import logging
+import time
 from core.event_system import EventDispatcher, Event, EventType
 
 logger = logging.getLogger(__name__)
@@ -45,6 +46,7 @@ class BaseEntity(ABC):
         self.direction = "right"  # Default direction
         self.animation_frame = 0
         self.dragging = False
+        self._current_walk = None  # Current walking animation data
         
         # Register for events
         self._register_event_handlers()
@@ -223,6 +225,20 @@ class BaseEntity(ABC):
                 # Update direction if specified
                 if 'direction' in event.data:
                     self.set_direction(event.data['direction'])
+                
+                # Handle step-by-step movement if provided
+                if all(k in event.data for k in ['start_pos', 'target_pos', 'steps']):
+                    self._current_walk = {
+                        'start_pos': event.data['start_pos'],
+                        'target_pos': event.data['target_pos'],
+                        'steps': event.data['steps'],
+                        'step_time': event.data.get('step_time', 0.05),
+                        'step_index': 0,
+                        'last_step_time': time.time()
+                    }
+                    logger.debug(f"Starting walk animation from {event.data['start_pos']} to {event.data['target_pos']}")
+                else:
+                    self._current_walk = None
             elif event.event_type == EventType.START_TALK:
                 self.set_state("talk")
             elif event.event_type == EventType.START_SLEEP:

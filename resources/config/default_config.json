@@ -1,7 +1,7 @@
 {
     "window": {
-        "width": 150,
-        "height": 150,
+        "width": 300,
+        "height": 200,
         "title": "DigiPet",
         "bg_color": "lightblue",
         "transparent_color": "lightblue"
@@ -18,9 +18,9 @@
     },
     "digimon": {
         "default_type": "Rookie",
-        "default_name": "Agumon",
+        "default_name": "Tentomon",
         "behavior": {
-            "walk_probability": 40,
+            "walk_probability": 70,
             "talk_probability": 10,
             "sleep_probability": 5
         },

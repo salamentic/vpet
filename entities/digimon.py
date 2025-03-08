@@ -88,8 +88,40 @@ class Digimon(BaseEntity):
         # Update behavior timer
         self.behavior_timer += delta_time
         
+        # Handle walking animation steps if we're currently walking
+        if self._current_walk and self.current_state == "walk" and not self.dragging:
+            current_time = time.time()
+            if current_time - self._current_walk['last_step_time'] >= self._current_walk['step_time']:
+                # Time for the next step in the walking animation
+                self._current_walk['last_step_time'] = current_time
+                
+                # Calculate current position
+                start_x, start_y = self._current_walk['start_pos']
+                target_x, target_y = self._current_walk['target_pos']
+                steps = self._current_walk['steps']
+                step_index = self._current_walk['step_index']
+                
+                # Linear interpolation between start and target position
+                progress = min(1.0, (step_index + 1) / steps)
+                new_x = start_x + (target_x - start_x) * progress
+                new_y = start_y + (target_y - start_y) * progress
+                
+                # Update position
+                self.set_position(int(new_x), int(new_y))
+                
+                # Update step index
+                self._current_walk['step_index'] += 1
+                
+                # If we've finished all steps, clear the walk data
+                if self._current_walk['step_index'] >= steps:
+                    logger.debug(f"Walk animation completed: arrived at {self.position}")
+                    self._current_walk = None
+                    # Return to idle state when walking is complete
+                    if self.current_state == "walk":
+                        self.set_state("idle")
+        
         # Check if it's time for a random behavior
-        if self.behavior_timer >= self.behavior_interval and not self.dragging:
+        elif self.behavior_timer >= self.behavior_interval and not self.dragging and not self._current_walk:
             self.behavior_timer = 0
             self._perform_random_behavior()
         
@@ -121,19 +153,21 @@ class Digimon(BaseEntity):
                 })
             )
             
-            # Calculate random distance to walk
-            distance = random.randint(50, 150)
+            # Calculate random distance to walk based on window size
+            window_width, window_height = self.size
+            max_distance = min(100, window_width // 2)  # Limit walk distance to half the window width
+            distance = random.randint(20, max_distance)
             if direction == "left":
                 distance = -distance
             
             # Dispatch move event with target position
             x, y = self.position
-            target_x = max(0, min(x + distance, 1920 - self.size[0]))  # Assume max screen width of 1920
+            target_x = max(0, min(x + distance, window_width - 32))  # 32 is approximate sprite width
             
             # If we hit a boundary, change direction
             if target_x <= 0:
                 self.set_direction("right")
-            elif target_x >= 1920 - self.size[0]:
+            elif target_x >= window_width - 32:
                 self.set_direction("left")
             
             self._walk_to_position(target_x, y)
