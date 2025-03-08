@@ -8,7 +8,7 @@
     },
     "animation": {
         "speed": 150,
-        "behavior_interval": 3000
+        "behavior_interval": 6000
     },
     "sprites": {
         "folder": "resources/spritesheets",
@@ -20,9 +20,9 @@
         "default_type": "Rookie",
         "default_name": "Tentomon",
         "behavior": {
-            "walk_probability": 70,
-            "talk_probability": 10,
-            "sleep_probability": 5
+            "walk_probability": 30,
+            "talk_probability": 20,
+            "sleep_probability": 10
         },
         "messages": [
             "Hello there!",

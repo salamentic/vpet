@@ -49,13 +49,26 @@ class SpeechBubble:
         """Draw the speech bubble on the canvas."""
         # Calculate position above the entity
         entity_x, entity_y = self.entity.position
-        entity_width, entity_height = self.entity.size
         
-        # Bubble dimensions and position
-        bubble_width = min(200, entity_width * 2)
-        bubble_height = 40
+        # Try to get actual entity dimensions from sprite
+        entity_width, entity_height = 32, 32  # Default fallback
+        try:
+            # Get current frame if available
+            current_frame = self.entity.get_current_frame()
+            if current_frame:
+                if hasattr(current_frame, 'width') and hasattr(current_frame, 'height'):
+                    entity_width = current_frame.width()
+                    entity_height = current_frame.height()
+        except:
+            pass
+        
+        # Bubble dimensions and position - make it proportional to entity size
+        bubble_width = min(120, max(80, entity_width * 3))
+        bubble_height = 30
+        
+        # Position bubble directly above sprite with minimal gap
         bubble_x = entity_x + entity_width // 2 - bubble_width // 2
-        bubble_y = entity_y - bubble_height - 10
+        bubble_y = entity_y - bubble_height - 5  # Only 5px gap for closer positioning
         
         # Ensure bubble is on screen
         bubble_x = max(5, min(bubble_x, self.canvas.winfo_width() - bubble_width - 5))
@@ -81,13 +94,15 @@ class SpeechBubble:
             tags=f"speech_{id(self.entity)}"
         )
         
-        # Add text
+        # Add text with bigger font and better formatting
         self.text_id = self.canvas.create_text(
             bubble_x + bubble_width // 2,
             bubble_y + bubble_height // 2,
             text=self.message,
-            font=("Arial", 10),
+            font=("Arial", 9, "bold"),  # Slightly bigger, bold font
             width=bubble_width - 10,
+            fill="black",
+            justify="center",  # Center-align text
             tags=f"speech_{id(self.entity)}"
         )
     
@@ -366,7 +381,9 @@ class TkinterRenderer(BaseRenderer):
         """
         entity = event.source
         message = event.data.get('message', '')
-        duration = event.data.get('duration', 3000)
+        
+        # Use longer duration (5000ms = 5 seconds) for better readability
+        duration = event.data.get('duration', 5000)
         
         # Clear any existing speech bubble for this entity
         if entity in self.speech_bubbles and self.speech_bubbles[entity]:

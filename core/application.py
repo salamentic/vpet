@@ -91,7 +91,7 @@ class DigiPetApplication:
             },
             "animation": {
                 "speed": 150,  # ms between frames
-                "behavior_interval": 3000  # ms between behaviors
+                "behavior_interval": 6000  # ms between behaviors (6 seconds)
             },
             "sprites": {
                 "folder": "resources/spritesheets",
@@ -103,9 +103,9 @@ class DigiPetApplication:
                 "default_type": "Rookie",
                 "default_name": "Agumon",
                 "behavior": {
-                    "walk_probability": 40,
-                    "talk_probability": 10,
-                    "sleep_probability": 5
+                    "walk_probability": 30,
+                    "talk_probability": 20,
+                    "sleep_probability": 10
                 },
                 "messages": [
                     "Hello there!",
